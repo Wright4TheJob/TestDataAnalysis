@@ -22,9 +22,9 @@ $ python3 TestDataAnalysis.py > results.txt
 # Input Files
 Files are assumed to be exported from the MTI software, but the script is configurable for your data structure. An example of the file expected to be read is shown below.
 ```
-6/11/2018 11:47:32 AM   Width, Thick, Diam. Units Code, then 20 Cal Factor Table
+6/11/2018 11:47:32 AM   Width, Thick, Diam. Units Code
 1.0000, 1.0000, 1.0000, 0,
-199659.6719, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+199659.6719,
 Load, Disp, Stress, Time, Temp, Axial, Transverse, Chans 1-20
  40.4636, 0.00000, 40.464, 0.01422,  0.00, 0.00000, 0.00000, -40.463593,
  40.9143, 0.00000, 40.914, 0.01424,  0.00, 0.00000, 0.00000, -40.914330,
