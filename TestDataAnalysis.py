@@ -9,6 +9,7 @@ Gets the peak load from a standard tensile test file for a list of filenames
 import csv
 import os
 import sys
+import matplotlib.pyplot as plt
 
 def generate_filename_list(basename,suffix,n,digits,start_index=1):
     filenames = [0]*n
@@ -58,7 +59,7 @@ def readtensiledata(filename,delimiter = ',',kind = 'stress-strain'):
         load_column = 2
         disp_column = 5
     else:
-        print('Unknown kind of test selected in get_max_loads: ' + kind)
+        print('Unknown kind of test selected in readtensiledata: ' + kind)
         return []
 
     ########## Data Importing ############################################
@@ -132,20 +133,20 @@ def get_moduli(data_sets,lower_thresh=0.25,upper_thresh=0.75,compliance_rate=0):
 
 def get_modulus(data,lower_thresh=0.25,upper_thresh=0.75):
 
-    max_load = get_max_load(data)
-    lower_load = lower_thresh*max_load
-    upper_load = upper_thresh*max_load
-
-    upper_index = get_nearest_index(upper_load,data[0])
-    lower_index = get_nearest_index(lower_load,data[0])
-    upper_actual_load = data[0][upper_index]
-    lower_actual_load = data[0][lower_index]
-    upper_disp = data[1][upper_index]
-    lower_disp = data[1][lower_index]
+    lower = get_modulus_point(data,lower_thresh)
+    upper = get_modulus_point(data,upper_thresh)
     # get slope at d_load/d_disp
-    slope = (upper_actual_load - lower_actual_load)/(upper_disp-lower_disp)
+    slope = (upper[0] - lower[0])/(upper[1]-lower[1])
 
     return slope
+
+def get_modulus_point(data,thresh):
+    load_max = get_max_load(data)
+    load_target = thresh*load_max
+    index = get_nearest_index(load_target,data[0])
+    load_actual = data[0][index]
+    disp = data[1][index]
+    return [load_actual,disp]
 
 def get_nearest_index(value,list):
     index = -1
@@ -169,6 +170,55 @@ def get_nearest_index(value,list):
 
     return index
 
+##################################################
+# Plotting functions
+def plot_data_sets(data_sets,
+    names,
+    kind = 'stress-strain',
+    load_units='',
+    disp_units='',
+    analysis=True,
+    shouldShow=False):
+
+    x_label = ''
+    y_label = ''
+    if kind == 'load-displacement':
+        x_label += 'Displacement'
+        y_label += 'Load'
+    elif kind == 'stress-strain':
+        x_label += 'Strain'
+        y_label += 'Stress'
+    else:
+        print('Unknown kind of test selected in plot_data_sets: ' + kind)
+        return []
+
+    x_label += disp_units
+    y_label += load_units
+
+    for i in range(0,len(data_sets)):
+        plot_data(
+            data_sets[i],
+            names[i],
+            analysis=analysis,
+            xLabel=x_label,
+            yLabel=y_label,
+            shouldShow=shouldShow)
+
+def plot_data(data,name,analysis=True,xLabel='x',yLabel='y',shouldShow=False):
+    name = name[:-4] + '.png'
+    xs = data[1]
+    ys = data[0]
+    fig = plt.figure()
+    plt.plot(xs,ys)
+    fig.set_size_inches(6,4)
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.savefig(name, dpi=120)
+    if shouldShow == True:
+        plt.show()
+    plt.close()
+
+
 #########################
 ##### Begin script ######
 #########################
@@ -177,11 +227,11 @@ def get_nearest_index(value,list):
 #folder = '/Users/your_username/your_folder/' # MacOS
 #folder = 'C:\\Users\\your_home_folder\\your_folder' # Windows
 folder = '/Users/davidwright/Dropbox/Cob/Data/MixRatioExperiment/MatrixRatios/'
-base_name = '100-'
+base_name = '080-'
 suffix = '.Dat'
 
 # Read settings
-files_to_read = 1
+files_to_read = 5
 start_index = 1
 index_digits = 3
 delimiter = ',' # CSV file
@@ -190,19 +240,21 @@ delimiter = ',' # CSV file
 test_kind = 'load-displacement'
 #test_kind = 'stress-strain'
 # Compliance constants:
-# compliance = 0 # tensile testing
+compliance = 0 # tensile testing
 # compliance = 0.00005917356 # Three-point bending [mm/N]
-# compliance = 0.00001037912 # Flat Plate compression [mm/N]
+compliance = 0.00001037912 # Flat Plate compression [mm/N]
 
 # Excecute analysis
+filenames = generate_filename_list(
+    base_name,
+    suffix,
+    files_to_read,
+    digits=index_digits,
+    start_index = start_index)
+
 data_sets = read_files(
     folder,
-    generate_filename_list(
-        base_name,
-        suffix,
-        files_to_read,
-        digits=index_digits,
-        start_index = start_index),
+    filenames,
     delimiter = delimiter,
     kind = test_kind)
 
@@ -210,7 +262,8 @@ if data_sets is None:
     sys.exit('No data sets read. Exiting.')
 
 max_loads = get_max_loads(data_sets)
-moduli = get_moduli(data_sets,compliance_rate=0.0001)
+moduli = get_moduli(data_sets,compliance_rate=compliance)
+plot_data_sets(data_sets,filenames,kind=test_kind)
 
 # print results
 print('Max Loads:')
