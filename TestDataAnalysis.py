@@ -9,7 +9,6 @@ Gets the peak load from a standard tensile test file for a list of filenames
 import csv
 import os
 import sys
-import matplotlib.pyplot as plt
 
 def generate_filename_list(basename,suffix,n,digits,start_index=1):
     filenames = [0]*n
@@ -186,6 +185,8 @@ def plot_data_sets(data_sets,
     disp_units='',
     analysis=True,
     shouldShow=False):
+
+    import matplotlib.pyplot as plt
 
     x_label = ''
     y_label = ''
