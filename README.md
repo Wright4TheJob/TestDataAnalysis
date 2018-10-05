@@ -36,5 +36,4 @@ Load, Disp, Stress, Time, Temp, Axial, Transverse, Chans 1-20
 Header lines are ignored and delimiter type is easily modified for tab-separated or other file types.
 
 # Prerequisites
-The python packages have been kept minimal: csv, os, and sys.
-Future versions may have matplotlib functionality.
+The python packages have been kept minimal: csv, os, and sys. If using the plotting functions, matplotlib is also required.
