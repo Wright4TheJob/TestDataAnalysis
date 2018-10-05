@@ -10,7 +10,57 @@ import csv
 import os
 import sys
 
-def readtensiledata(filename,delimiter = ','):
+def generate_filename_list(basename,suffix,n,digits,start_index=1):
+    filenames = [0]*n
+    for i in range(start_index,n+start_index):
+        number = str(i).zfill(digits)
+
+        filename = basename + number + suffix
+        filenames[i-1] = filename
+    return filenames
+
+def read_files(folder,filenames,delimiter=',',kind = 'stress-strain'):
+    exists = False
+    is_folder = False
+    if os.path.exists(folder):
+        exists = True
+    else:
+        print('Filepath specified does not exist: ' + folder)
+        return
+    if os.path.isdir(folder):
+        is_folder = True
+    if exists and is_folder:
+        os.chdir(folder)
+
+    data_sets = []
+    for filename in filenames:
+        data = readtensiledata(filename,delimiter=delimiter,kind=kind)
+        data_sets.append(data)
+
+    for i in range(0,len(data_sets)):
+        for j in range(0,len(data_sets[i])):
+            for k in range(0,len(data_sets[i][j])):
+                try:
+                    data_sets[i][j][k] = float(data_sets[i][j][k])
+                except Exception as ex:
+                    logging.exception('Caught an error')
+
+    return data_sets
+
+def readtensiledata(filename,delimiter = ',',kind = 'stress-strain'):
+
+    load_column = 0
+    disp_column = 0
+    if kind == 'load-displacement':
+        load_column = 0
+        disp_column = 1
+    elif kind == 'stress-strain':
+        load_column = 2
+        disp_column = 5
+    else:
+        print('Unknown kind of test selected in get_max_loads: ' + kind)
+        return []
+
     ########## Data Importing ############################################
     Load= []
     Disp = []
@@ -37,98 +87,49 @@ def readtensiledata(filename,delimiter = ','):
                 return
             for element, targetlist in zip(line,columns):
                 targetlist.append(element)
-
-    return columns
-
-def generate_filename_list(basename,suffix,n,digits,start_index=1):
-    filenames = [0]*n
-    for i in range(start_index,n+start_index):
-        number = str(i).zfill(digits)
-
-        filename = basename + number + suffix
-        filenames[i-1] = filename
-    return filenames
-
-def read_files(folder,filenames,delimiter=','):
-    exists = False
-    is_folder = False
-    if os.path.exists(folder):
-        exists = True
-    else:
-        print('Filepath specified does not exist: ' + folder)
-        return
-    if os.path.isdir(folder):
-        is_folder = True
-    if exists and is_folder:
-        os.chdir(folder)
-
-    data_sets = []
-    for filename in filenames:
-        data = readtensiledata(filename,delimiter=delimiter)
-        data_sets.append(data)
-
-    for i in range(0,len(data_sets)):
-        for j in range(0,len(data_sets[i])-1):
-            for k in range(0,len(data_sets[i][j])):
-                try:
-                    data_sets[i][j][k] = float(data_sets[i][j][k])
-                except Exception as ex:
-                    logging.exception('Caught an error')
-
-    return data_sets
-
-def get_max_loads(data_sets,kind='stress-strain'):
-    column = 0
-    if kind == 'load-displacement':
-        column=0
-    elif kind == 'stress-strain':
-        column=2
-    else:
-        print('Unknown kind of test selected in get_max_loads: ' + kind)
-        return []
-
+    data_set = [columns[load_column],columns[disp_column]]
+    return data_set
+    
+def get_max_loads(data_sets):
     max_loads = []
     for data in data_sets:
-        load_data = data[0]
-        max_load = max(load_data)
-        max_loads.append(max_load)
-        #print('Max Load for ' + filename + ' is:\t' +  repr(maxload))
+        max_loads.append(get_max_load(data))
     return max_loads
 
-def get_moduli(data_sets,kind='stress-strain'):
-    load_column = 0
-    disp_column = 0
-    if kind == 'load-displacement':
-        load_column = 0
-        disp_column = 1
-    elif kind == 'stress-strain':
-        load_column = 2
-        disp_column = 5
-    else:
-        print('Unknown kind of test selected in get_max_loads: ' + kind)
-        return []
+def get_max_load(data):
 
-    max_loads = get_max_loads(data_sets,kind=kind)
-    lower_loads = [x*0.25 for x in max_loads]
-    upper_loads = [x*0.75 for x in max_loads]
+    load_data = data[0]
+    max_load = max(load_data)
+
+    return max_load
+
+def get_moduli(data_sets,lower_thresh=0.25,upper_thresh=0.75):
     slopes = []
-
-    for i in range(0,len(data_sets)):
-        data = data_sets[i]
-        max_load = max_loads[i]
-        upper_load = upper_loads[i]
-        lower_load = lower_loads[i]
-        upper_index = get_nearest_index(upper_load,data[load_column])
-        lower_index = get_nearest_index(lower_load,data[load_column])
-        upper_actual_load = data[load_column][upper_index]
-        lower_actual_load = data[load_column][lower_index]
-        upper_disp = data[disp_column][upper_index]
-        lower_disp = data[disp_column][lower_index]
-        # get slope at d_load/d_disp
-        slope = (upper_actual_load - lower_actual_load)/(upper_disp-lower_disp)
-        slopes.append(slope)
+    for data in data_sets:
+        slopes.append(get_modulus(
+                data,
+                lower_thresh=lower_thresh,
+                upper_thresh=upper_thresh)
+            )
 
     return slopes
+
+def get_modulus(data,lower_thresh=0.25,upper_thresh=0.75):
+
+    max_load = get_max_load(data)
+    lower_load = lower_thresh*max_load
+    upper_load = upper_thresh*max_load
+
+    upper_index = get_nearest_index(upper_load,data[0])
+    lower_index = get_nearest_index(lower_load,data[0])
+    upper_actual_load = data[0][upper_index]
+    lower_actual_load = data[0][lower_index]
+    upper_disp = data[1][upper_index]
+    lower_disp = data[1][lower_index]
+    # get slope at d_load/d_disp
+    slope = (upper_actual_load - lower_actual_load)/(upper_disp-lower_disp)
+
+    return slope
 
 def get_nearest_index(value,list):
     index = -1
@@ -164,7 +165,7 @@ base_name = '100-'
 suffix = '.Dat'
 
 # Read settings
-files_to_read = 5
+files_to_read = 1
 start_index = 1
 index_digits = 3
 delimiter = ',' # CSV file
@@ -182,13 +183,14 @@ data_sets = read_files(
         files_to_read,
         digits=index_digits,
         start_index = start_index),
-    delimiter = delimiter)
+    delimiter = delimiter,
+    kind = test_kind)
 
 if data_sets is None:
     sys.exit('No data sets read. Exiting.')
 
-max_loads = get_max_loads(data_sets,kind=test_kind)
-moduli = get_moduli(data_sets,kind=test_kind)
+max_loads = get_max_loads(data_sets)
+moduli = get_moduli(data_sets)
 
 # print results
 print('Max Loads:')
