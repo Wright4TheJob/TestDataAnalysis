@@ -104,6 +104,11 @@ def get_max_load(data):
 
     return max_load
 
+def get_max_point(data):
+    max_load = get_max_load(data)
+    max_load_disp = data[1][get_nearest_index(max_load,data[0])]
+    return [max_load,max_load_disp]
+
 def compliance_correction(data,rate):
     loads = data[0]
     disps = data[1]
@@ -154,6 +159,7 @@ def get_nearest_index(value,list):
 
         if list[i] == value:
             index = i
+            break
         if i > 0:
             if list[i] > value and list[i-1] < value:
                 lower_val = list[i-1]
@@ -164,6 +170,7 @@ def get_nearest_index(value,list):
                     index = i-1
                 else:
                     index = i
+                break
     if index == -1:
         print('Value %f not found in list'%(value))
         return
@@ -204,12 +211,19 @@ def plot_data_sets(data_sets,
             yLabel=y_label,
             shouldShow=shouldShow)
 
-def plot_data(data,name,analysis=True,xLabel='x',yLabel='y',shouldShow=False):
+def plot_data(data,name,analysis=True,xLabel='x',yLabel='y',shouldShow=False,mod_lower=0.25,mod_upper=0.75):
     name = name[:-4] + '.png'
     xs = data[1]
     ys = data[0]
     fig = plt.figure()
     plt.plot(xs,ys)
+    if analysis == True:
+        peak_point = get_max_point(data)
+        lower_modulus_point = get_modulus_point(data,mod_lower)
+        upper_modulus_point = get_modulus_point(data,mod_upper)
+    plt.plot(peak_point[1],peak_point[0],'ro')
+    plt.plot(lower_modulus_point[1],lower_modulus_point[0],'ro')
+    plt.plot(upper_modulus_point[1],upper_modulus_point[0],'ro')
     fig.set_size_inches(6,4)
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
