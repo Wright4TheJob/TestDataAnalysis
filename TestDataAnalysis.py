@@ -89,7 +89,7 @@ def readtensiledata(filename,delimiter = ',',kind = 'stress-strain'):
                 targetlist.append(element)
     data_set = [columns[load_column],columns[disp_column]]
     return data_set
-    
+
 def get_max_loads(data_sets):
     max_loads = []
     for data in data_sets:
@@ -103,9 +103,25 @@ def get_max_load(data):
 
     return max_load
 
-def get_moduli(data_sets,lower_thresh=0.25,upper_thresh=0.75):
+def compliance_correction(data,rate):
+    loads = data[0]
+    disps = data[1]
+    if len(loads) != len(disps):
+        print('Length of load and displacement data not matched')
+
+    for i in range(0,len(loads)):
+        load = loads[i]
+        disp = disps[i]
+        disp_corrected = disp - load*rate
+        disps[i] = disp_corrected
+
+    return [loads,disps]
+
+def get_moduli(data_sets,lower_thresh=0.25,upper_thresh=0.75,compliance_rate=0):
     slopes = []
     for data in data_sets:
+        if compliance_rate != 0:
+            data = compliance_correction(data,compliance_rate)
         slopes.append(get_modulus(
                 data,
                 lower_thresh=lower_thresh,
@@ -173,6 +189,10 @@ delimiter = ',' # CSV file
 
 test_kind = 'load-displacement'
 #test_kind = 'stress-strain'
+# Compliance constants:
+# compliance = 0 # tensile testing
+# compliance = 0.00005917356 # Three-point bending [mm/N]
+# compliance = 0.00001037912 # Flat Plate compression [mm/N]
 
 # Excecute analysis
 data_sets = read_files(
@@ -190,7 +210,7 @@ if data_sets is None:
     sys.exit('No data sets read. Exiting.')
 
 max_loads = get_max_loads(data_sets)
-moduli = get_moduli(data_sets)
+moduli = get_moduli(data_sets,compliance_rate=0.0001)
 
 # print results
 print('Max Loads:')
