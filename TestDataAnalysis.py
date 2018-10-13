@@ -184,7 +184,9 @@ def plot_data_sets(data_sets,
     load_units='',
     disp_units='',
     analysis=True,
-    shouldShow=False):
+    shouldShow=False,
+    mod_lower=0.25,
+    mod_upper=0.75):
 
     import matplotlib.pyplot as plt
 
@@ -210,9 +212,12 @@ def plot_data_sets(data_sets,
             analysis=analysis,
             xLabel=x_label,
             yLabel=y_label,
-            shouldShow=shouldShow)
+            shouldShow=shouldShow,
+            mod_lower = mod_lower,
+            mod_upper = mod_upper)
 
 def plot_data(data,name,analysis=True,xLabel='x',yLabel='y',shouldShow=False,mod_lower=0.25,mod_upper=0.75):
+    import matplotlib.pyplot as plt
     name = name[:-4] + '.png'
     xs = data[1]
     ys = data[0]
@@ -242,7 +247,7 @@ def plot_data(data,name,analysis=True,xLabel='x',yLabel='y',shouldShow=False,mod
 #folder = '/Users/your_username/your_folder/' # MacOS
 #folder = 'C:\\Users\\your_home_folder\\your_folder' # Windows
 folder = '/Users/davidwright/Dropbox/Cob/Data/MixRatioExperiment/MatrixRatios/'
-base_name = '080-'
+base_name = '100-'
 suffix = '.Dat'
 
 # Read settings
@@ -258,7 +263,8 @@ test_kind = 'load-displacement'
 compliance = 0 # tensile testing
 # compliance = 0.00005917356 # Three-point bending [mm/N]
 compliance = 0.00001037912 # Flat Plate compression [mm/N]
-
+modulus_lower_bound = 0.4
+modulus_upper_bound = 0.75
 # Excecute analysis
 filenames = generate_filename_list(
     base_name,
@@ -277,8 +283,14 @@ if data_sets is None:
     sys.exit('No data sets read. Exiting.')
 
 max_loads = get_max_loads(data_sets)
-moduli = get_moduli(data_sets,compliance_rate=compliance)
-plot_data_sets(data_sets,filenames,kind=test_kind)
+moduli = get_moduli(data_sets,
+    compliance_rate=compliance,
+    upper_thresh = modulus_upper_bound,
+    lower_thresh=modulus_lower_bound)
+plot_data_sets(data_sets,filenames,
+    kind=test_kind,
+    mod_upper = modulus_upper_bound,
+    mod_lower=modulus_lower_bound)
 
 # print results
 print('Max Loads:')
