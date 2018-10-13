@@ -3,6 +3,25 @@ A script for analyzing tensile and compression test data.
 
 This python script reads a set of sequentially numbered files containing test data.
 
+# To-Do
+- Update program structure to use python classes for more general data passing
+    - Only require knowledge of input file when reading
+    - Class for data point with properties:
+        - Time
+        - Load
+        - Disp
+        - Stress
+        - Strain
+    - Class for Test with properties:
+        - Filename
+        - List of data points
+        - Analysis results (Peak, modulus...)
+- Use class for analysis settings
+    - Pass each method Settings object or reference self.settings
+- Add external settings file for easier editing?
+- Unit testing
+- Add proper error flags
+
 # Usage
 The program is written for python 3 and tested in python 3.7.
 
