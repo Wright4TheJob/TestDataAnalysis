@@ -17,10 +17,16 @@ class Test:
         self.name = name
         self.data = []
         self.input_suffix = None
+
+        self.peak = None
+        self.modulus = None
+
         self.x_axis = 'Stress'
         self.y_axis = 'Strain'
         self.x_data = None
         self.y_data = None
+        self.lower_thresh=0.25
+        self.upper_thresh=0.75
 
     def useful_data(self):
         if self.y_axis == 'Stress':
@@ -38,7 +44,8 @@ class Test:
         else:
             print('Unknown x axis parameter encountered in calculate_peak: '
                 + self.x_axis)
-
+        return
+        
     def add_data_point(self,point):
         self.data.append(point)
 
@@ -54,15 +61,26 @@ class Test:
         return peak
 
     def modulus(self):
-        pass
+        if self.modulus == None:
+            self.modulus = self.calculate_modulus()
+        return self.modulus
 
-    def get_modulus_point(self,data,thresh):
-        load_max = get_max_load(data)
-        load_target = thresh*load_max
-        index = get_nearest_index(load_target,data[0])
-        load_actual = data[0][index]
-        disp = data[1][index]
-        return [load_actual,disp]
+    def calculate_modulus(self):
+
+        lower = get_modulus_point(self.lower_thresh)
+        upper = get_modulus_point(self.upper_thresh)
+        # get slope at d_load/d_disp
+        slope = (upper[0] - lower[0])/(upper[1]-lower[1])
+
+        return slope
+
+    def get_modulus_point(self,thresh):
+        max = self.peak()
+        y_target = thresh*max
+        index = get_nearest_index(y_target,self.y_data)
+        y = self.y_data[index]
+        x = self.x_data[index]
+        return [y,x]
 
     def get_nearest_index(self,value,list):
         index = -1
