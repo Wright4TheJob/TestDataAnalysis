@@ -99,8 +99,8 @@ class Test:
         self.data = []
         self.input_suffix = None
 
-        self.peak = None
-        self.modulus = None
+        self._peak = None
+        self._modulus = None
 
         self.x_axis = self.settings.x_axis
         self.y_axis = self.settings.y_axis
@@ -111,8 +111,6 @@ class Test:
 
         self.read_data()
         self.useful_data()
-        self.calculate_peak()
-        self.calculate_modulus()
 
     def useful_data(self):
         if self.y_axis == 'stress':
@@ -135,32 +133,29 @@ class Test:
     def add_data_point(self,point):
         self.data.append(point)
 
+    @property
+    def peak(self):
+        if self._peak is None:
+            self._peak = self.calculate_peak()
+
+        return self._peak
+
     def calculate_peak(self):
         '''Calculates the peak of a given column from data'''
-        self.peak = max(self.y_data)
-        return
+        return max(self.y_data)
+
+    @property
+    def modulus(self):
+        if self._modulus is None:
+            self._modulus = self.calculate_modulus()
+        return self._modulus
 
     def calculate_modulus(self):
         lower = self.get_modulus_point(self.lower_thresh)
         upper = self.get_modulus_point(self.upper_thresh)
         # get slope at d_load/d_disp
         slope = (upper[0] - lower[0])/(upper[1]-lower[1])
-        self.modulus = slope
-        return
-
-    def get_modulus_point(self,thresh):
-        max = self.peak
-        y_target = thresh*max
-        index = self.get_nearest_index(y_target,self.y_data)
-
-    def calculate_modulus(self):
-
-        lower = self.get_modulus_point(self.lower_thresh)
-        upper = self.get_modulus_point(self.upper_thresh)
-        # get slope at d_load/d_disp
-        slope = (upper[0] - lower[0])/(upper[1]-lower[1])
-        self.modulus = slope
-        return
+        return slope
 
     def get_modulus_point(self,thresh):
         max = self.peak
