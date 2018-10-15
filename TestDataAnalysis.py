@@ -19,6 +19,25 @@ class Test:
         self.input_suffix = None
         self.x_axis = 'Stress'
         self.y_axis = 'Strain'
+        self.x_data = None
+        self.y_data = None
+
+    def useful_data(self):
+        if self.y_axis == 'Stress':
+            self.y_data = [point.stress for point in data]
+        elif self.y_axis == 'Load':
+            self.y_data = [point.load for point in data]
+        else:
+            print('Unknown y axis parameter encountered in calculate_peak: '
+                + self.y_axis)
+
+        if self.x_axis == 'Strain':
+            self.x_data = [point.strain for point in data]
+        elif self.x_axis == 'Displacement':
+            self.x_data = [point.displacement for point in data]
+        else:
+            print('Unknown x axis parameter encountered in calculate_peak: '
+                + self.x_axis)
 
     def add_data_point(self,point):
         self.data.append(point)
@@ -31,18 +50,43 @@ class Test:
 
     def calculate_peak(self):
         '''Calculates the peak of a given column from data'''
-        if self.y_axis == 'Stress':
-            list = [point.stress for point in data]
-        elif self.y_axis == 'Load':
-            list = [point.load for point in data]
-        else:
-            print('Unknown y axis parameter encountered in calculate_peak: '
-                + self.y_axis)
-        peak = max(list)
+        peak = max(self.y_data)
         return peak
 
     def modulus(self):
         pass
+
+    def get_modulus_point(self,data,thresh):
+        load_max = get_max_load(data)
+        load_target = thresh*load_max
+        index = get_nearest_index(load_target,data[0])
+        load_actual = data[0][index]
+        disp = data[1][index]
+        return [load_actual,disp]
+
+    def get_nearest_index(self,value,list):
+        index = -1
+        for i in range(0,len(list)):
+
+            if list[i] == value:
+                index = i
+                break
+            if i > 0:
+                if list[i] > value and list[i-1] < value:
+                    lower_val = list[i-1]
+                    lower_error = lower_val - value
+                    upper_val = list[i]
+                    upper_error = upper_val - value
+                    if abs(lower_error) < abs(upper_error):
+                        index = i-1
+                    else:
+                        index = i
+                    break
+        if index == -1:
+            print('Value %f not found in list'%(value))
+            return
+
+        return index
 
 class DataPoint:
     '''Single test data point (row) read from file'''
