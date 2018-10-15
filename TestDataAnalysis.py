@@ -10,6 +10,49 @@ import csv
 import os
 import sys
 
+class Test:
+    '''Class containing test data and results'''
+
+    def __init__(self,name):
+        self.name = name
+        self.data = []
+        self.input_suffix = None
+        self.x_axis = 'Stress'
+        self.y_axis = 'Strain'
+
+    def add_data_point(self,point):
+        self.data.append(point)
+
+    def peak(self):
+        # if self.peak != nil, return value, otherwise calculate value
+        if self.peak == None:
+            self.peak = self.calculate_peak()
+        return self.peak
+
+    def calculate_peak(self):
+        '''Calculates the peak of a given column from data'''
+        if self.y_axis == 'Stress':
+            list = [point.stress for point in data]
+        elif self.y_axis == 'Load':
+            list = [point.load for point in data]
+        else:
+            print('Unknown y axis parameter encountered in calculate_peak: '
+                + self.y_axis)
+        peak = max(list)
+        return peak
+
+    def modulus(self):
+        pass
+
+class DataPoint:
+    '''Single test data point (row) read from file'''
+    def __init__(self):
+        self.time = None
+        self.load = None
+        self.displacement = None
+        self.stress = None
+        self.strain = None
+
 def generate_filename_list(basename,suffix,n,digits,start_index=1):
     filenames = [0]*n
     for i in range(start_index,n+start_index):
