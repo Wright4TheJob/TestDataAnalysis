@@ -137,20 +137,21 @@ class Test:
 
     def calculate_peak(self):
         '''Calculates the peak of a given column from data'''
-        peak = max(self.y_data)
-        return peak
+        self.peak = max(self.y_data)
+        return
 
     def calculate_modulus(self):
         lower = self.get_modulus_point(self.lower_thresh)
         upper = self.get_modulus_point(self.upper_thresh)
         # get slope at d_load/d_disp
         slope = (upper[0] - lower[0])/(upper[1]-lower[1])
-        return slope
+        self.modulus = slope
+        return
 
     def get_modulus_point(self,thresh):
         max = self.peak
         y_target = thresh*max
-        index = get_nearest_index(y_target,self.y_data)
+        index = self.get_nearest_index(y_target,self.y_data)
         y = self.y_data[index]
         x = self.x_data[index]
         return [y,x]
@@ -299,12 +300,8 @@ if analyst.data_sets is None:
 #    mod_upper = modulus_upper_bound,
 #    mod_lower=modulus_lower_bound)
 
-# print results
-analyst.calculate_peaks()
-
 print('Max Loads:')
-for x in analyst.data_sets:
-    print(x.peak)
-#[print(x) for x in analyst.data_sets]
-#print('Slopes:')
-#[print(x) for x in moduli]
+[print(x.peak) for x in analyst.data_sets]
+
+print('Slopes:')
+[print(x.modulus) for x in analyst.data_sets]
