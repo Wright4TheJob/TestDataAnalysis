@@ -102,25 +102,17 @@ class Test:
         self.peak = None
         self.modulus = None
 
-<<<<<<< HEAD
         self.x_axis = self.settings.x_axis
         self.y_axis = self.settings.y_axis
-=======
-        self.x_axis = 'Stress'
-        self.y_axis = 'Strain'
->>>>>>> 72cc96af4058de86520b191939b469f419766286
         self.x_data = None
         self.y_data = None
         self.lower_thresh=0.25
         self.upper_thresh=0.75
-<<<<<<< HEAD
 
         self.read_data()
         self.useful_data()
         self.calculate_peak()
         self.calculate_modulus()
-=======
->>>>>>> 72cc96af4058de86520b191939b469f419766286
 
     def useful_data(self):
         if self.y_axis == 'stress':
@@ -139,11 +131,7 @@ class Test:
             print('Unknown x axis parameter encountered in calculate_peak: '
                 + self.x_axis)
         return
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 72cc96af4058de86520b191939b469f419766286
     def add_data_point(self,point):
         self.data.append(point)
 
@@ -152,7 +140,6 @@ class Test:
         self.peak = max(self.y_data)
         return
 
-<<<<<<< HEAD
     def calculate_modulus(self):
         lower = self.get_modulus_point(self.lower_thresh)
         upper = self.get_modulus_point(self.upper_thresh)
@@ -165,26 +152,20 @@ class Test:
         max = self.peak
         y_target = thresh*max
         index = self.get_nearest_index(y_target,self.y_data)
-=======
-    def modulus(self):
-        if self.modulus == None:
-            self.modulus = self.calculate_modulus()
-        return self.modulus
 
     def calculate_modulus(self):
 
-        lower = get_modulus_point(self.lower_thresh)
-        upper = get_modulus_point(self.upper_thresh)
+        lower = self.get_modulus_point(self.lower_thresh)
+        upper = self.get_modulus_point(self.upper_thresh)
         # get slope at d_load/d_disp
         slope = (upper[0] - lower[0])/(upper[1]-lower[1])
-
-        return slope
+        self.modulus = slope
+        return
 
     def get_modulus_point(self,thresh):
-        max = self.peak()
+        max = self.peak
         y_target = thresh*max
-        index = get_nearest_index(y_target,self.y_data)
->>>>>>> 72cc96af4058de86520b191939b469f419766286
+        index = self.get_nearest_index(y_target,self.y_data)
         y = self.y_data[index]
         x = self.x_data[index]
         return [y,x]
@@ -323,7 +304,7 @@ def plot_data(data,name,analysis=True,xLabel='x',yLabel='y',shouldShow=False,mod
 #########################
 my_settings = Settings()
 analyst = Analyst(my_settings)
-print(analyst.names)
+#print(analyst.names)
 
 if analyst.data_sets is None:
     sys.exit('No data sets read. Exiting.')
