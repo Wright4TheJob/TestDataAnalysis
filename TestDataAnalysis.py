@@ -19,21 +19,24 @@ class Settings:
     base_name = '100-'
     suffix = '.Dat'
 
-    # Read settings
+    ######## Read settings
     files_to_read = 5
     start_index = 1
     index_digits = 3
 
-    x_axis = 'displacement'
-    #x_axis = 'strain'
-    y_axis = 'load'
-    #y_axis = 'stress'
+    #x_axis = 'displacement'
+    x_axis = 'strain'
+    #y_axis = 'load'
+    y_axis = 'stress'
     # Compliance constants:
     compliance = 0 # tensile testing
     # compliance = 0.00005917356 # Three-point bending [mm/N]
-    compliance = 0.00001037912 # Flat Plate compression [mm/N]
+    # compliance = 0.00001037912 # Flat Plate compression [mm/N]
     modulus_lower_bound = 0.4
     modulus_upper_bound = 0.75
+
+    ######## Yield stress calculation
+    yield_offset = 0.2
 
     ######## Input File Parameters
     delimiter = ',' # CSV file
@@ -101,6 +104,9 @@ class Test:
 
         self._peak = None
         self._modulus = None
+        self._modulus_x_intercept = None
+        self._yield_stress = None
+        self._yield_strain = None
 
         self.x_axis = self.settings.x_axis
         self.y_axis = self.settings.y_axis
@@ -155,6 +161,7 @@ class Test:
         upper = self.get_modulus_point(self.upper_thresh)
         # get slope at d_load/d_disp
         slope = (upper[0] - lower[0])/(upper[1]-lower[1])
+        self._modulus_x_intercept = upper[0]/slope - upper[1]
         return slope
 
     def get_modulus_point(self,thresh):
@@ -164,6 +171,56 @@ class Test:
         y = self.y_data[index]
         x = self.x_data[index]
         return [y,x]
+
+    @property
+    def yield_stress(self):
+        if self._yield_stress is None:
+            self._yield_stress = self.calculate_yield_stress()
+        return self._yield_stress
+
+    def calculate_yield_stress(self):
+        '''Calculates a yield stress/load from offset modulus'''
+        if self._modulus_x_intercept is None:
+            self._modulus = self.calculate_modulus()
+        self._yield_x_intercept = self.modulus + self.settings.yield_offset
+        found_yield = False
+        for i in range(0,len(self.y_data)-1):
+            x = self.x_data[i]
+            y = self.y_data[i]
+            yield_i = yield_line_value(x)
+            x_next = self.x_data[i+1]
+            y_next = self.y_data[i+1]
+            yield_next = yield_line_value(x_next)
+            if y > yield_i and y < yield_next:
+                yield_line = [[x,yield_i], [x_next,yield_next]]
+                data_line = [[x,y],[x_next,y_next]]
+                intersection = intersection_of_lines(yield_line,data_line)
+                found_yield = True
+                return intersection[1]
+
+        if found_yield == False:
+            print('Unable to calculate yield stress')
+
+    def yield_line_value(self,x):
+        return self.modulus*(x+self._yield_x_intercept)
+
+    def intersection_of_lines(self,first_pair,second_pair):
+        '''Takes in two pairs of points and returns intection point'''
+        (m1,b1) = slope_intercept(first_pair[0],first_pair[1])
+        (m2,b2) = slope_intercept(second_pair[0],second_pair[1])
+        x = (b2-b1)/(m1-m2)
+        y = m1*x+b1
+        return [x,y]
+
+    def slope_intercept(self,point1,point2):
+        '''The slope and intercept form of a line from two points'''
+        x1 = point1[0]
+        y1 = point1[1]
+        x2 = point[0]
+        y2 = point[1]
+        slope = (y2 - y1)/(x2 - x1)
+        intercept = -slope*x1
+        return (slope,intercept)
 
     def get_nearest_index(self,value,list):
         '''Gets the index of the first item from list closest to target value'''
