@@ -15,7 +15,7 @@ class Settings:
     # File path and filename settings
     #folder = '/Users/your_username/your_folder/' # MacOS
     #folder = 'C:\\Users\\your_home_folder\\your_folder' # Windows
-    folder = '/Users/davidwright/Dropbox/Cob/Data/MixRatioExperiment/MatrixRatios/'
+    folder = '/Users/davidwright/Dropbox/Cob/Data/MatrixExperiment/MatrixRatios/'
     base_name = '100-'
     suffix = '.Dat'
 
@@ -56,6 +56,7 @@ class Analyst:
         self.names = self.generate_filename_list()
         self.data_sets = []
         self.peaks = []
+        self.yields = []
         self.moduli = []
         self.create_data_sets()
 
@@ -96,7 +97,7 @@ class Analyst:
 class Test:
     '''Class containing test data and results'''
 
-    def __init__(self,name,settings):
+    def __init__(self,name,settings,load_data = True):
         self.settings = settings
         self.name = name
         self.data = []
@@ -114,9 +115,9 @@ class Test:
         self.y_data = None
         self.lower_thresh=0.25
         self.upper_thresh=0.75
-
-        self.read_data()
-        self.useful_data()
+        if load_data == True:
+            self.read_data()
+            self.useful_data()
 
     def useful_data(self):
         if self.y_axis == 'stress':
@@ -160,8 +161,8 @@ class Test:
         lower = self.get_modulus_point(self.lower_thresh)
         upper = self.get_modulus_point(self.upper_thresh)
         # get slope at d_load/d_disp
-        slope = (upper[0] - lower[0])/(upper[1]-lower[1])
-        self._modulus_x_intercept = upper[0]/slope - upper[1]
+        (slope,intercept) = self.slope_intercept(upper,lower)
+        self._modulus_x_intercept = intercept/slope
         return slope
 
     def get_modulus_point(self,thresh):
@@ -170,7 +171,7 @@ class Test:
         index = self.get_nearest_index(y_target,self.y_data)
         y = self.y_data[index]
         x = self.x_data[index]
-        return [y,x]
+        return [x,y]
 
     @property
     def yield_stress(self):
@@ -180,21 +181,22 @@ class Test:
 
     def calculate_yield_stress(self):
         '''Calculates a yield stress/load from offset modulus'''
-        if self._modulus_x_intercept is None:
+        if self._modulus_x_intercept is None or self._modulus is None:
             self._modulus = self.calculate_modulus()
-        self._yield_x_intercept = self.modulus + self.settings.yield_offset
+        self._yield_x_intercept = self._modulus_x_intercept + self.settings.yield_offset
         found_yield = False
         for i in range(0,len(self.y_data)-1):
             x = self.x_data[i]
             y = self.y_data[i]
-            yield_i = yield_line_value(x)
+            yield_i = self.yield_line_value(x)
             x_next = self.x_data[i+1]
             y_next = self.y_data[i+1]
-            yield_next = yield_line_value(x_next)
-            if y > yield_i and y < yield_next:
+            yield_next = self.yield_line_value(x_next)
+            if y > yield_i and y_next < yield_next:
                 yield_line = [[x,yield_i], [x_next,yield_next]]
                 data_line = [[x,y],[x_next,y_next]]
-                intersection = intersection_of_lines(yield_line,data_line)
+                intersection = self.intersection_of_lines(yield_line,data_line)
+                #print(intersection)
                 found_yield = True
                 return intersection[1]
 
@@ -202,24 +204,29 @@ class Test:
             print('Unable to calculate yield stress')
 
     def yield_line_value(self,x):
-        return self.modulus*(x+self._yield_x_intercept)
+        stress = self.modulus*(x+self._yield_x_intercept)
+        #print('%2.4f, %2.4f'%(x,stress))
+        return stress
 
     def intersection_of_lines(self,first_pair,second_pair):
         '''Takes in two pairs of points and returns intection point'''
-        (m1,b1) = slope_intercept(first_pair[0],first_pair[1])
-        (m2,b2) = slope_intercept(second_pair[0],second_pair[1])
+        (m1,b1) = self.slope_intercept(first_pair[0],first_pair[1])
+        (m2,b2) = self.slope_intercept(second_pair[0],second_pair[1])
         x = (b2-b1)/(m1-m2)
-        y = m1*x+b1
+        y = m2*x+b2
         return [x,y]
 
     def slope_intercept(self,point1,point2):
         '''The slope and intercept form of a line from two points'''
         x1 = point1[0]
         y1 = point1[1]
-        x2 = point[0]
-        y2 = point[1]
+        x2 = point2[0]
+        y2 = point2[1]
+        if x1 == x2 and y1 != y2:
+            print('Line is vertical, slope is infinite')
+            return (999999,x1)
         slope = (y2 - y1)/(x2 - x1)
-        intercept = -slope*x1
+        intercept = y1-slope*x1
         return (slope,intercept)
 
     def get_nearest_index(self,value,list):
@@ -368,6 +375,9 @@ if analyst.data_sets is None:
 
 print('Max Loads:')
 [print(x.peak) for x in analyst.data_sets]
+
+print('Yield Loads:')
+[print(x.yield_stress) for x in analyst.data_sets]
 
 print('Slopes:')
 [print(x.modulus) for x in analyst.data_sets]
