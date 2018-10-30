@@ -162,7 +162,7 @@ class Test:
         upper = self.get_modulus_point(self.upper_thresh)
         # get slope at d_load/d_disp
         (slope,intercept) = self.slope_intercept(upper,lower)
-        self._modulus_x_intercept = intercept/slope
+        self._modulus_x_intercept = -intercept/slope
         return slope
 
     def get_modulus_point(self,thresh):
@@ -199,12 +199,14 @@ class Test:
                 #print(intersection)
                 found_yield = True
                 return intersection[1]
-
+            elif y == yield_i:
+                found_yield = True
+                return y
         if found_yield == False:
             print('Unable to calculate yield stress')
 
     def yield_line_value(self,x):
-        stress = self.modulus*(x+self._yield_x_intercept)
+        stress = self.modulus*(x-self._yield_x_intercept)
         #print('%2.4f, %2.4f'%(x,stress))
         return stress
 

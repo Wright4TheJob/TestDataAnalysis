@@ -24,7 +24,10 @@ class KnownValues(unittest.TestCase):
     def test_line_intersection(self):
         '''Simple intersecting lines should have predictable intersections'''
         # of the form [[[x,y],[x,y]],[[x,y],[x,y]],[intersection x,y]]
-        test_lines = [[[[0,0],[1,0]],[[0,-1],[1,1]],[0.5,0]]]
+        test_lines = [
+            [[[0,0],[1,0]],[[0,-1],[1,1]],[0.5,0]],
+            [[[1,1],[3,3]],[[1,3],[3,1]],[2,2]],
+            ]
         settings = test.Settings()
         this_test = test.Test('Name',settings,load_data=False)
         for test_set in test_lines:
