@@ -20,14 +20,14 @@ class Settings:
     suffix = '.Dat'
 
     ######## Read settings
-    files_to_read = 5
+    files_to_read = 1
     start_index = 1
     index_digits = 3
 
-    #x_axis = 'displacement'
-    x_axis = 'strain'
-    #y_axis = 'load'
-    y_axis = 'stress'
+    x_axis = 'Displacement'
+    #x_axis = 'Strain'
+    y_axis = 'Load'
+    #y_axis = 'Stress'
     # Compliance constants:
     compliance = 0 # tensile testing
     # compliance = 0.00005917356 # Three-point bending [mm/N]
@@ -48,11 +48,18 @@ class Settings:
     stress_column = 2
     strain_column = 5
 
+    ######## Plotting Settings
+    plot_modulus_points = True
+    plot_modulus_line = True
+    plot_yield_point = True
+    plot_peak = True
+    show_figures = False
+
 class Analyst:
     '''Class for running analysis on individual tests'''
-    def __init__(self,settings):
+    def __init__(self):
         self.names = []
-        self.settings = settings
+        self.settings = Settings()
         self.names = self.generate_filename_list()
         self.data_sets = []
         self.peaks = []
@@ -91,46 +98,47 @@ class Analyst:
     def create_data_sets(self):
         self.set_dir()
         for filename in self.names:
-            self.data_sets.append(Test(filename,self.settings))
+            self.data_sets.append(Test(filename))
         return
 
 class Test:
     '''Class containing test data and results'''
-
-    def __init__(self,name,settings,load_data = True):
-        self.settings = settings
+    def __init__(self,name,load_data=True):
+        self.settings = Settings()
         self.name = name
         self.data = []
         self.input_suffix = None
 
-        self._peak = None
+        self._peak_stress = None
+        self._peak_strain = None
         self._modulus = None
         self._modulus_x_intercept = None
+        self.modulus_upper_point = None
+        self.modulus_lower_point = None
         self._yield_stress = None
         self._yield_strain = None
-
         self.x_axis = self.settings.x_axis
         self.y_axis = self.settings.y_axis
         self.x_data = None
         self.y_data = None
-        self.lower_thresh=0.25
-        self.upper_thresh=0.75
+        self.lower_thresh=self.settings.modulus_lower_bound
+        self.upper_thresh=self.settings.modulus_upper_bound
         if load_data == True:
             self.read_data()
             self.useful_data()
 
     def useful_data(self):
-        if self.y_axis == 'stress':
+        if self.y_axis == 'Stress':
             self.y_data = [point.stress for point in self.data]
-        elif self.y_axis == 'load':
+        elif self.y_axis == 'Load':
             self.y_data = [point.load for point in self.data]
         else:
             print('Unknown y axis parameter encountered in calculate_peak: '
                 + self.y_axis)
 
-        if self.x_axis == 'strain':
+        if self.x_axis == 'Strain':
             self.x_data = [point.strain for point in self.data]
-        elif self.x_axis == 'displacement':
+        elif self.x_axis == 'Displacement':
             self.x_data = [point.displacement for point in self.data]
         else:
             print('Unknown x axis parameter encountered in calculate_peak: '
@@ -142,14 +150,27 @@ class Test:
 
     @property
     def peak(self):
-        if self._peak is None:
-            self._peak = self.calculate_peak()
-
-        return self._peak
+        if self._peak_stress is None:
+            self._peak_stress = self.calculate_peak()
+        return self._peak_stress
 
     def calculate_peak(self):
         '''Calculates the peak of a given column from data'''
-        return max(self.y_data)
+        if self.y_data is not None:
+            return max(self.y_data)
+        else:
+            print('No data loaded, canceling data analysis')
+
+    @property
+    def peak_strain(self):
+        if self._peak_strain is None:
+            self._peak_strain = self.calculate_peak_strain()
+        return self._peak_strain
+
+    def calculate_peak_strain(self):
+        peak_stress = self.peak
+        index = self.get_nearest_index(peak_stress,self.y_data)
+        return self.x_data[index]
 
     @property
     def modulus(self):
@@ -158,10 +179,10 @@ class Test:
         return self._modulus
 
     def calculate_modulus(self):
-        lower = self.get_modulus_point(self.lower_thresh)
-        upper = self.get_modulus_point(self.upper_thresh)
+        self.modulus_lower_point = self.get_modulus_point(self.lower_thresh)
+        self.modulus_upper_point = self.get_modulus_point(self.upper_thresh)
         # get slope at d_load/d_disp
-        (slope,intercept) = self.slope_intercept(upper,lower)
+        (slope,intercept) = self.slope_intercept(self.modulus_upper_point,self.modulus_lower_point)
         self._modulus_x_intercept = -intercept/slope
         return slope
 
@@ -176,10 +197,11 @@ class Test:
     @property
     def yield_stress(self):
         if self._yield_stress is None:
-            self._yield_stress = self.calculate_yield_stress()
+             point = self.calculate_yield()
+             self._yield_stress = point[1]
         return self._yield_stress
 
-    def calculate_yield_stress(self):
+    def calculate_yield(self):
         '''Calculates a yield stress/load from offset modulus'''
         if self._modulus_x_intercept is None or self._modulus is None:
             self._modulus = self.calculate_modulus()
@@ -198,12 +220,19 @@ class Test:
                 intersection = self.intersection_of_lines(yield_line,data_line)
                 #print(intersection)
                 found_yield = True
-                return intersection[1]
+                return intersection
             elif y == yield_i:
                 found_yield = True
                 return y
         if found_yield == False:
             print('Unable to calculate yield stress')
+
+    @property
+    def yield_strain(self):
+        if self._yield_strain is None:
+             point = self.calculate_yield()
+             self._yield_strain = point[0]
+        return self._yield_strain
 
     def yield_line_value(self,x):
         stress = self.modulus*(x-self._yield_x_intercept)
@@ -299,72 +328,80 @@ class DataPoint:
 
 ##################################################
 # Plotting functions
-def plot_data_sets(data_sets,
-    names,
-    kind = 'stress-strain',
-    load_units='',
-    disp_units='',
-    analysis=True,
-    shouldShow=False,
-    mod_lower=0.25,
-    mod_upper=0.75):
-
+def plot_test(test):
     import matplotlib.pyplot as plt
-
-    x_label = ''
-    y_label = ''
-    if kind == 'load-displacement':
-        x_label += 'Displacement'
-        y_label += 'Load'
-    elif kind == 'stress-strain':
-        x_label += 'Strain'
-        y_label += 'Stress'
-    else:
-        print('Unknown kind of test selected in plot_data_sets: ' + kind)
-        return []
-
-    x_label += disp_units
-    y_label += load_units
-
-    for i in range(0,len(data_sets)):
-        plot_data(
-            data_sets[i],
-            names[i],
-            analysis=analysis,
-            xLabel=x_label,
-            yLabel=y_label,
-            shouldShow=shouldShow,
-            mod_lower = mod_lower,
-            mod_upper = mod_upper)
-
-def plot_data(data,name,analysis=True,xLabel='x',yLabel='y',shouldShow=False,mod_lower=0.25,mod_upper=0.75):
-    import matplotlib.pyplot as plt
-    name = name[:-4] + '.png'
-    xs = data[1]
-    ys = data[0]
+    settings = Settings()
+    set_dir(settings)
+    name = test.name + '.png'
+    xs = test.x_data
+    ys = test.y_data
     fig = plt.figure()
-    plt.plot(xs,ys)
-    if analysis == True:
-        peak_point = get_max_point(data)
-        lower_modulus_point = get_modulus_point(data,mod_lower)
-        upper_modulus_point = get_modulus_point(data,mod_upper)
-    plt.plot(peak_point[1],peak_point[0],'rx')
-    plt.plot(lower_modulus_point[1],lower_modulus_point[0],'rx')
-    plt.plot(upper_modulus_point[1],upper_modulus_point[0],'rx')
+    plt.plot(xs,ys,'.',markersize=1.5,label='Data')
+    # Modulus line plotting
+    if settings.plot_modulus_line == True:
+        slope = test.modulus
+        intercept = test._modulus_x_intercept
+        mod_line_lower = [intercept,0]
+        mod_line_upper = [test.peak/slope + intercept,test.peak]
+        plt.plot(
+            [mod_line_lower[0],mod_line_upper[0]],
+            [mod_line_lower[1],mod_line_upper[1]],
+            'k',
+            linewidth=1,
+            label='Modulus')
+    # Modulus secant point plotting
+    if settings.plot_modulus_points == True:
+        if test.modulus_upper_point is None or test.modulus_lower_point is None:
+            modulus = test.modulus
+        mod_lower = test.modulus_lower_point
+        mod_upper = test.modulus_upper_point
+        plt.plot(
+            [mod_lower[0],mod_upper[0]],
+            [mod_lower[1],mod_upper[1]],
+            'rx',
+            label='Modulus Secant Points')
+    # Peak value point plotting
+    if settings.plot_peak == True:
+        peak_y = test.peak
+        peak_x = test.peak_strain
+        plt.plot(peak_x,peak_y,'rx','Peak')
+    # Yield point plotting
+    if settings.plot_yield_point == True:
+        plt.plot(test.yield_strain,test.yield_stress,'r*',markersize=4,label='Yield')
+
     fig.set_size_inches(6,4)
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
+    plt.xlabel(test.x_axis)
+    plt.ylabel(test.y_axis)
+    plt.legend(loc=4)
     plt.savefig(name, dpi=120)
-    if shouldShow == True:
+    if settings.show_figures == True:
         plt.show()
     plt.close()
+
+def set_dir(settings):
+    folder = settings.folder
+    exists = False
+    is_folder = False
+    if os.path.exists(folder):
+        exists = True
+    else:
+        print('Filepath specified does not exist: ' + folder)
+        return
+    if os.path.isdir(folder):
+        is_folder = True
+    else:
+        print('Filepath specified is not a directory: ' + folder)
+        return
+    if exists and is_folder:
+        os.chdir(folder)
+    return
 
 
 #########################
 ##### Begin script ######
 #########################
 my_settings = Settings()
-analyst = Analyst(my_settings)
+analyst = Analyst()
 #print(analyst.names)
 
 if analyst.data_sets is None:
@@ -383,3 +420,8 @@ print('Yield Loads:')
 
 print('Slopes:')
 [print(x.modulus) for x in analyst.data_sets]
+
+print('Plotting Figures...')
+[plot_test(x) for x in analyst.data_sets]
+
+print('Done')
