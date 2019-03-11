@@ -14,20 +14,20 @@ class Settings:
     '''Program settings'''
     # File path and filename settings
     #folder = '/Users/your_username/your_folder/' # MacOS
-    #folder = 'C:\\Users\\your_home_folder\\your_folder' # Windows
-    folder = '/Users/davidwright/Dropbox/Cob/Data/MatrixExperiment/MatrixRatios/'
-    base_name = '100-'
+    folder = 'C:\\Users\keaga\Google Drive\Academic\Grad school\Research\Raw Data\G44 Results\All Data Files' # Windows
+#    folder = '/Users/davidwright/Dropbox/Cob/Data/MatrixExperiment/MatrixRatios/'
+    base_name = 'W7N4'
     suffix = '.Dat'
 
     ######## Read settings
-    files_to_read = 1
+    files_to_read = 8
     start_index = 1
     index_digits = 3
 
-    x_axis = 'Displacement'
-    #x_axis = 'Strain'
-    y_axis = 'Load'
-    #y_axis = 'Stress'
+#    x_axis = 'Displacement'
+    x_axis = 'Strain'
+#    y_axis = 'Load'
+    y_axis = 'Stress'
     # Compliance constants:
     compliance = 0 # tensile testing
     # compliance = 0.00005917356 # Three-point bending [mm/N]
@@ -123,6 +123,8 @@ class Test:
         self.y_data = None
         self.lower_thresh=self.settings.modulus_lower_bound
         self.upper_thresh=self.settings.modulus_upper_bound
+        self._strain_at_break = None
+        self._uniform_strain = None
         if load_data == True:
             self.read_data()
             self.useful_data()
@@ -238,6 +240,41 @@ class Test:
         stress = self.modulus*(x-self._yield_x_intercept)
         #print('%2.4f, %2.4f'%(x,stress))
         return stress
+    
+    @property
+    def strain_at_break(self):
+        if self._strain_at_break is None:
+            self._strain_at_break = self.calculate_break_strain()
+        return self._strain_at_break
+    
+    @property
+    def uniform_strain(self):
+        if self._uniform_strain is None:
+            self._uniform_strain = self.calculate_uniform_strain()
+        return self._uniform_strain
+    
+    def calculate_break_strain(self):
+        '''Calculates strain at fracture'''
+        if self.x_axis == 'Strain':
+            last = len(self.x_data)-1
+            while (self.y_data[last-1] > 1.01*self.y_data[last]):
+                last += -1
+            return self.x_data[last]
+        else:
+            print('Strain data not found')
+            return None
+        
+    def calculate_uniform_strain(self):
+        '''Calculates strain at point of maximum load'''
+        if self.x_axis == 'Strain':
+            un_elong = 0;
+            for i in range(0,len(self.x_data)):
+                if self.y_data[i] == max(self.y_data):
+                    un_elong = self.x_data[i];
+            return un_elong
+        else:
+            print('Strain data not found')
+            return None
 
     def intersection_of_lines(self,first_pair,second_pair):
         '''Takes in two pairs of points and returns intection point'''
@@ -420,6 +457,12 @@ print('Yield Loads:')
 
 print('Slopes:')
 [print(x.modulus) for x in analyst.data_sets]
+
+print('Strains at Peak:')
+[print(x.uniform_strain) for x in analyst.data_sets]
+
+print('Strains at Break:')
+[print(x.strain_at_break) for x in analyst.data_sets]
 
 print('Plotting Figures...')
 [plot_test(x) for x in analyst.data_sets]
