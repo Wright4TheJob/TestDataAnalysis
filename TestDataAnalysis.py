@@ -15,12 +15,12 @@ class Settings:
     # File path and filename settings
     #folder = '/Users/your_username/your_folder/' # MacOS
     #folder = 'C:\\Users\\your_home_folder\\your_folder' # Windows
-    folder = '/Users/davidwright/Dropbox/Cob/Data/MatrixExperiment/MatrixRatios/'
-    base_name = '100-'
-    suffix = '.Dat'
+    folder = "/home/davidwright/Dropbox/cob/Data/MixExperiment/ClayMixesRaw"
+    base_name = "Csup"
+    suffix = ".Dat"
 
     ######## Read settings
-    files_to_read = 1
+    files_to_read = 4
     start_index = 1
     index_digits = 3
 
@@ -29,9 +29,9 @@ class Settings:
     y_axis = 'Load'
     #y_axis = 'Stress'
     # Compliance constants:
-    compliance = 0 # tensile testing
+    # compliance = 0 # tensile testing
     # compliance = 0.00005917356 # Three-point bending [mm/N]
-    # compliance = 0.00001037912 # Flat Plate compression [mm/N]
+    compliance = 0.00001037912 # Flat Plate compression [mm/N]
     modulus_lower_bound = 0.4
     modulus_upper_bound = 0.75
 
